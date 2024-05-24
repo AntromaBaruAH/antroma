@@ -1,0 +1,143 @@
+#include <Arduino.h>
+#include <ESP8266WiFi.h>
+#include "HTTPSRedirect.h"
+
+// Enter network credentials:
+const char* ssid     = "Pixel_8670";
+const char* password = "ASDFGHJKL";
+
+// Enter Google Script Deployment ID:
+const char *GScriptId = "AKfycbzBDBMvcP-pzGvB7ZUkrmvXrKwW1LP4k64CMd092ahVXNEbF8wlNk5IrkleIWiAjPK2";
+
+// Enter command (insert_row or append_row) and your Google Sheets sheet name (default is Sheet1):
+String payload_base =  "{\"command\": \"insert_row\", \"sheet_name\": \"Sheet1\", \"values\": ";
+String payload = "";
+
+// Google Sheets setup (do not edit)
+const char* host = "script.google.com";
+const int httpsPort = 443;
+const char* fingerprint = "";
+String url = String("/macros/s/") + GScriptId + "/exec";
+HTTPSRedirect* client = nullptr;
+
+// Declare variables that will be published to Google Sheets
+double value0 = 0;
+int value1 = 0;
+int value2 = 0;
+
+const double VCC = 3.3;             // NodeMCU on board 3.3v vcc
+const double R2 = 100000;            // 10k ohm series resistor
+const double adc_resolution = 1023; // 10-bit adc
+
+const double A = 0.001129148;   // thermistor equation parameters
+const double B = 0.000234125;
+const double C = 0.0000000876741; 
+
+void setup() {
+
+  Serial.begin(9600);        
+  delay(10);
+  Serial.println('\n');
+  
+  // Connect to WiFi
+  WiFi.begin(ssid, password);             
+  Serial.print("Connecting to ");
+  Serial.print(ssid); Serial.println(" ...");
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.print(".");
+  }
+  Serial.println('\n');
+  Serial.println("Connection established!");  
+  Serial.print("IP address:\t");
+  Serial.println(WiFi.localIP());
+
+  // Use HTTPSRedirect class to create a new TLS connection
+  client = new HTTPSRedirect(httpsPort);
+  client->setInsecure();
+  client->setPrintResponseBody(true);
+  client->setContentTypeHeader("application/json");
+  
+  Serial.print("Connecting to ");
+  Serial.println(host);
+
+  // Try to connect for a maximum of 5 times
+  bool flag = false;
+  for (int i=0; i<5; i++){ 
+    int retval = client->connect(host, httpsPort);
+    if (retval == 1){
+       flag = true;
+       Serial.println("Connected");
+       break;
+    }
+    else
+      Serial.println("Connection failed. Retrying...");
+  }
+  if (!flag){
+    Serial.print("Could not connect to server: ");
+    Serial.println(host);
+    return;
+  }
+  delete client;    // delete HTTPSRedirect object
+  client = nullptr; // delete HTTPSRedirect object
+}
+
+
+void loop() {
+  double Vout, Rth, temperature, adc_value; 
+
+  adc_value = analogRead(A0);
+  Vout = (adc_value * VCC) / adc_resolution;
+  Rth = (VCC * R2 / Vout) - R2;
+
+/*  Steinhart-Hart Thermistor Equation:
+ *  Temperature in Kelvin = 1 / (A + B[ln(R)] + C[ln(R)]^3)
+ *  where A = 0.001129148, B = 0.000234125 and C = 8.76741*10^-8  */
+  temperature = (1 / (A + (B * log(Rth)) + (C * pow((log(Rth)),3))));   // Temperature in kelvin
+
+  temperature = temperature - 273.15;  // Temperature in degree celsius
+  Serial.print("Temperature = ");
+  Serial.print((-1)*temperature);
+  Serial.println(" degree celsius");
+  delay(1000);
+  // create some fake data to publish
+  value0 = (-1)*temperature;
+  value1 ++;
+  value2 = 0;
+
+
+  static bool flag = false;
+  if (!flag){
+    client = new HTTPSRedirect(httpsPort);
+    client->setInsecure();
+    flag = true;
+    client->setPrintResponseBody(true);
+    client->setContentTypeHeader("application/json");
+  }
+  if (client != nullptr){
+    if (!client->connected()){
+      client->connect(host, httpsPort);
+    }
+  }
+  else{
+    Serial.println("Error creating client object!");
+  }
+  
+  // Create json object string to send to Google Sheets
+  payload = payload_base + "\"" + value0 + "," + value1 + "," + value2 + "\"}";
+  
+  // Publish data to Google Sheets
+  Serial.println("Publishing data...");
+  Serial.println(payload);
+  if(client->POST(url, host, payload)){ 
+    // do stuff here if publish was successful
+  }
+  else{
+    // do stuff here if publish was not successful
+    Serial.println("Error while connecting");
+  }
+
+  // a delay of several seconds is required before publishing again    
+  delay(5000);
+}
