@@ -1,0 +1,167 @@
+import tkinter as tk
+from tkinter import messagebox
+import pandas as pd
+import os
+
+# Global variables for entries
+entries = {}
+sample_data = {}
+
+# Create the main application window for first GUI
+root = tk.Tk()
+root.title("Sample Collection")
+root.geometry("500x400")
+root.configure(bg="#f0f4f7")
+
+# Function to save data to an Excel file and switch to the second GUI
+def save_to_excel_and_switch():
+    sample_id = entries['Sample ID'].get()
+
+    if not sample_id:
+        messagebox.showwarning("Input Error", "Sample ID cannot be empty!")
+        return
+    
+    # Collect data from entry fields
+    data = {key: entries[key].get() for key in entries if key != 'Sample ID'}
+    sample_data['Sample ID'] = sample_id
+    sample_data.update(data)
+    
+    # Create a DataFrame
+    df = pd.DataFrame(data, index=[sample_id])
+    
+    file_name = 'sample_collection.xlsx'
+    
+    # Check if the file exists
+    if not os.path.exists(file_name):
+        df.to_excel(file_name, sheet_name='Samples')
+    else:
+        # Append data to the existing Excel file
+        existing_df = pd.read_excel(file_name, index_col=0)
+        combined_df = pd.concat([existing_df, df])
+        combined_df.to_excel(file_name, sheet_name='Samples')
+    
+    messagebox.showinfo("Success", "Data saved successfully!")
+    switch_to_second_gui()
+
+# Create the first GUI layout
+def create_first_gui():
+    # Clear previous widgets
+    for widget in root.winfo_children():
+        widget.destroy()
+
+    # Header label with design
+    tk.Label(root, text="SAMPLE COLLECTION", font=("Arial", 20, "bold"), fg="white", bg="#7b2cbf").pack(pady=10, fill=tk.X)
+
+    # Create a frame for Sample ID
+    frame1 = tk.Frame(root, bg="#f0f4f7")
+    frame1.pack(pady=10)
+
+    tk.Label(frame1, text="Sample ID:", font=("Arial", 14), bg="#f0f4f7").grid(row=0, column=0, padx=10, pady=5, sticky=tk.E)
+    entries['Sample ID'] = tk.Entry(frame1, font=("Arial", 12), width=30)
+    entries['Sample ID'].grid(row=0, column=1, padx=10, pady=5)
+
+    # Create a frame for Name fields
+    frame2 = tk.Frame(root, bg="#f0f4f7")
+    frame2.pack(pady=10)
+
+    # Name 1
+    tk.Label(frame2, text="Age:", font=("Arial", 12), bg="#f0f4f7").grid(row=0, column=0, padx=10, pady=5, sticky=tk.E)
+    entries['Age'] = tk.Entry(frame2, font=("Arial", 12), width=20)
+    entries['Age'].grid(row=0, column=1, padx=10, pady=5)
+
+    # Name 2
+    tk.Label(frame2, text="Height:", font=("Arial", 12), bg="#f0f4f7").grid(row=0, column=2, padx=10, pady=5, sticky=tk.E)
+    entries['Height'] = tk.Entry(frame2, font=("Arial", 12), width=20)
+    entries['Height'].grid(row=0, column=3, padx=10, pady=5)
+
+    # Name 3
+    tk.Label(frame2, text="Weight:", font=("Arial", 12), bg="#f0f4f7").grid(row=1, column=0, padx=10, pady=5, sticky=tk.E)
+    entries['Weight'] = tk.Entry(frame2, font=("Arial", 12), width=20)
+    entries['Weight'].grid(row=1, column=1, padx=10, pady=5)
+
+    # Name 4
+    tk.Label(frame2, text="Sex:", font=("Arial", 12), bg="#f0f4f7").grid(row=1, column=2, padx=10, pady=5, sticky=tk.E)
+    entries['Sex'] = tk.Entry(frame2, font=("Arial", 12), width=20)
+    entries['Sex'].grid(row=1, column=3, padx=10, pady=5)
+
+    # Name 5
+    tk.Label(frame2, text="Blood Group:", font=("Arial", 12), bg="#f0f4f7").grid(row=2, column=0, padx=10, pady=5, sticky=tk.E)
+    entries['Blood Group'] = tk.Entry(frame2, font=("Arial", 12), width=20)
+    entries['Blood Group'].grid(row=2, column=1, padx=10, pady=5)
+
+    # Name 6
+    tk.Label(frame2, text="Waist Size:", font=("Arial", 12), bg="#f0f4f7").grid(row=2, column=2, padx=10, pady=5, sticky=tk.E)
+    entries['Waist Size'] = tk.Entry(frame2, font=("Arial", 12), width=20)
+    entries['Waist Size'].grid(row=2, column=3, padx=10, pady=5)
+
+    # Create Operate Button with improved design
+    operate_button = tk.Button(root, text="OPERATE", bg="#d64161", fg="white", font=("Arial", 14, "bold"), command=save_to_excel_and_switch)
+    operate_button.pack(pady=30)
+
+# Create the second GUI layout with three columns and two rows
+def create_second_gui():
+    # Clear previous widgets
+    for widget in root.winfo_children():
+        widget.destroy()
+
+    # Header label with design
+    tk.Label(root, text="SAMPLE COLLECTION", font=("Arial", 20, "bold"), fg="white", bg="#7b2cbf").pack(pady=10, fill=tk.X)
+
+    # Frame for displaying Sample ID and names
+    frame_info = tk.Frame(root, bg="#003366")
+    frame_info.pack(pady=10)
+
+    tk.Label(frame_info, text=f"Sample ID: {sample_data['Sample ID']}", font=("Arial", 24, "bold"), fg="white", bg="#003366").pack(pady=10)
+    
+    # Create a frame for Name fields (3 columns, 2 rows)
+    frame_data = tk.Frame(frame_info, bg="#003366")
+    frame_data.pack()
+
+    tk.Label(frame_data, text=f"Age: {sample_data['Age']}", font=("Arial", 14), fg="white", bg="#003366").grid(row=0, column=0, padx=20, pady=5)
+    tk.Label(frame_data, text=f"Height: {sample_data['Height']}", font=("Arial", 14), fg="white", bg="#003366").grid(row=0, column=1, padx=20, pady=5)
+    tk.Label(frame_data, text=f"Weight: {sample_data['Weight']}", font=("Arial", 14), fg="white", bg="#003366").grid(row=0, column=2, padx=20, pady=5)
+
+    tk.Label(frame_data, text=f"Sex: {sample_data['Sex']}", font=("Arial", 14), fg="white", bg="#003366").grid(row=1, column=0, padx=20, pady=5)
+    tk.Label(frame_data, text=f"Blood Group: {sample_data['Blood Group']}", font=("Arial", 14), fg="white", bg="#003366").grid(row=1, column=1, padx=20, pady=5)
+    tk.Label(frame_data, text=f"Waist Size: {sample_data['Waist Size']}", font=("Arial", 14), fg="white", bg="#003366").grid(row=1, column=2, padx=20, pady=5)
+
+    # Create a label for the result output (Output-only, non-editable)
+    tk.Label(root, text="Result", font=("Arial", 16, "bold"), bg="#f0f4f7").pack(pady=10)
+    
+    # Output label for results
+    result_label = tk.Label(root, text="", font=("Arial", 14), width=50, height=5, bg="white", relief="sunken", anchor="nw", justify="left")
+    result_label.pack(padx=20, pady=10)
+
+    # Execute button
+    execute_button = tk.Button(root, text="EXECUTE", bg="#d64161", fg="white", font=("Arial", 14, "bold"), 
+                               command=lambda: execute_code(result_label))
+    execute_button.pack(pady=10)
+
+    # Reset button
+    reset_button = tk.Button(root, text="RESET", bg="#4CAF50", fg="white", font=("Arial", 14, "bold"), command=create_first_gui)
+    reset_button.pack(pady=10)
+
+# Function to switch to the second GUI
+def switch_to_second_gui():
+    create_second_gui()
+
+# ========================================
+# Section to add custom code by Hannah
+# ========================================
+def execute_code(result_label):
+    try:
+        # Statistical custom execution code here
+        # ******************************************
+        # ==================================
+        # EXAMPLE:
+        # result = some_statistical_function()
+        # result_label.config(text=result)
+        # ==================================
+        result_label.config(text="Please run your program")  # Placeholder
+    except Exception as e:
+        result_label.config(text=f"Error: {e}")
+
+# Start the application with the first GUI
+create_first_gui()
+
+root.mainloop()
