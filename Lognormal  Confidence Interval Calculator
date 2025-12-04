@@ -1,0 +1,110 @@
+import numpy as np
+from scipy.stats import norm
+
+def get_user_inputs():
+    """
+    Collects all necessary parameters for the Lognormal B10 CI calculation.
+    
+    Returns:
+        dict: A dictionary containing all required float inputs.
+    """
+    print("\n" + "="*50)
+    print(" Lognormal B10 Confidence Interval Calculator")
+    print(" (TH Test Analysis for CRest Lab)")
+    print("="*50)
+    
+    # We use hardcoded default values based on the last successful calculation
+    # (mu=4.939048, sigma=0.165825, SE_ln=0.0439 for n=30, CI=90%)
+    
+    inputs = {
+        'log_mean': 4.939048,
+        'log_std': 0.165825,
+        'se_ln_b10': 0.0439,
+        'sample_size_n': 30,
+        'confidence_level': 0.90,
+        'percentile': 0.10
+    }
+    
+    print("\n--- INPUTS FOR CI CALCULATION ---")
+    print(f"1. Log-Mean (mu_hat): {inputs['log_mean']} (Based on fitted data)")
+    print(f"2. Log-StdDev (sigma_hat): {inputs['log_std']} (Based on fitted data)")
+    print(f"3. SE of log(B10) (SE_ln): {inputs['se_ln_b10']} (Extracted from n={inputs['sample_size_n']} simulation plot)")
+    print(f"4. Sample Size (n): {inputs['sample_size_n']} (For labeling only)")
+    print(f"5. Confidence Level: {inputs['confidence_level']:.0%} (Typically 90% or 95%)")
+    print(f"6. Target Percentile: B{inputs['percentile']*100:.0f} Life")
+    print("----------------------------------\n")
+    
+    print("To change values, please edit the 'inputs' dictionary in the get_user_inputs function.")
+    
+    return inputs
+
+def calculate_lognormal_b10_ci(log_mean, log_std, se_ln_b10, confidence_level, percentile):
+    """
+    Calculates the two-sided Confidence Interval (CI) for the B10 life
+    of a Lognormal distribution using the Delta Method on the log-scale.
+    """
+
+    # --- 1. Define Critical Z-Scores ---
+
+    # Z-score for the Percentile (Location)
+    z_p = norm.ppf(percentile)
+
+    # Z-score for the Confidence Interval (Width)
+    alpha = 1 - confidence_level
+    z_ci = norm.ppf(1 - alpha / 2)
+
+    print(f"--- Statistical Constants ---")
+    print(f"Percentile Z-score (z_{percentile*100:.0f}): {z_p:.4f}")
+    print(f"CI Z-score (z_{1-alpha/2:.2f}): {z_ci:.4f}")
+    print("-" * 35)
+
+
+    # --- 2. Calculate Point Estimate on Log-Scale ---
+
+    # Formula: ln(t_B10) = mu_hat + z_p * sigma_hat
+    ln_t_b10_estimate = log_mean + z_p * log_std
+    point_estimate_hr = np.exp(ln_t_b10_estimate)
+
+    print(f"1. Log-Scale Point Estimate (ln(t_B10)): {ln_t_b10_estimate:.4f}")
+    print(f"   Time-Scale Estimate (t_B10): {point_estimate_hr:.2f} hours")
+
+
+    # --- 3. Calculate CI Half-Width on Log-Scale ---
+
+    # Formula: Half-Width_ln = z_{1-a/2} * SE_ln
+    half_width_ln = z_ci * se_ln_b10
+
+    print(f"2. Log-Scale Half-Width: {half_width_ln:.4f}")
+
+
+    # --- 4. Define and Back-Transform CI Bounds ---
+
+    # Log-Scale Bounds:
+    ln_lower_bound = ln_t_b10_estimate - half_width_ln
+    ln_upper_bound = ln_t_b10_estimate + half_width_ln
+
+    # Back-Transformation (Time-Scale Multiplicative CI)
+    lower_bound_hr = np.exp(ln_lower_bound)
+    upper_bound_hr = np.exp(ln_upper_bound)
+
+    print(f"3. Log-Scale Bounds: [{ln_lower_bound:.4f}, {ln_upper_bound:.4f}]")
+    print("-" * 35)
+    print(f"Final {confidence_level*100:.0f}% CI (Time-Scale): [{lower_bound_hr:.2f} hr, {upper_bound_hr:.2f} hr]")
+
+    return point_estimate_hr, lower_bound_hr, upper_bound_hr
+
+# ====================================================================
+# MAIN EXECUTION
+# ====================================================================
+
+# Gather inputs from the user-friendly function
+inputs = get_user_inputs()
+
+# Run the calculation
+point_estimate, lower_bound, upper_bound = calculate_lognormal_b10_ci(
+    log_mean=inputs['log_mean'],
+    log_std=inputs['log_std'],
+    se_ln_b10=inputs['se_ln_b10'],
+    confidence_level=inputs['confidence_level'],
+    percentile=inputs['percentile']
+)
